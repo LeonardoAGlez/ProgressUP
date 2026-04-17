@@ -1,0 +1,64 @@
+name: neon_pulse_3d
+description: NEON PULSE 3D - Progress Up. Entrena. Compite. Sube de nivel.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Navigation
+  go_router: ^14.2.7
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Supabase Backend
+  supabase_flutter: ^2.5.0
+
+  # Payments
+  purchases_flutter: ^8.0.0
+
+  # Animations
+  flutter_animate: ^4.5.0
+  lottie: ^3.1.0
+  shimmer: ^3.0.0
+
+  # Charts & Progress
+  fl_chart: ^0.69.0
+  percent_indicator: ^4.2.3
+
+  # Images
+  cached_network_image: ^3.3.1
+
+  # UI Utilities
+  flutter_svg: ^2.0.10
+  google_fonts: ^6.2.1
+  gap: ^3.0.1
+
+  # Local Storage
+  shared_preferences: ^2.3.2
+
+  # Utils
+  intl: ^0.19.0
+  url_launcher: ^6.2.6
+  image_picker: ^1.1.2
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.11
+  riverpod_generator: ^2.4.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/animations/
