@@ -33,11 +33,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
+      final authResponse = await Supabase.instance.client.auth.signInWithPassword(
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text,
       );
-      if (mounted) context.go('/home');
+
+      if (authResponse.user != null) {
+        final userData = await Supabase.instance.client
+            .from('users')
+            .select('peso_kg')
+            .eq('id', authResponse.user!.id)
+            .maybeSingle();
+
+        if (mounted) {
+          if (userData != null && userData['peso_kg'] != null) {
+            context.go('/home');
+          } else {
+            context.go('/onboarding');
+          }
+        }
+      }
     } on AuthException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -78,7 +93,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     const SizedBox(height: 16),
 
                     Text(
-                      'NEON PULSE 3D',
+                      'GymRank App',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,

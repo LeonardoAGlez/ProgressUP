@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/neon_card.dart';
 import '../../../shared/widgets/neon_button.dart';
+import '../services/workout_service.dart';
+import '../../../shared/providers/user_provider.dart';
+import 'package:go_router/go_router.dart';
 
 // Mock exercises
 const _exercises = [
@@ -84,6 +87,19 @@ class _WorkoutTrackerScreenState extends ConsumerState<WorkoutTrackerScreen>
 
   double get _progress =>
       _totalSetsTarget > 0 ? _totalSetsCompleted / _totalSetsTarget : 0;
+
+  int get _totalVolume {
+    int v = 0;
+    for (var sets in _completedSets.values) {
+      for (var s in sets) {
+        final wStr = s['weight'] as String;
+        final reps = s['reps'] as int;
+        final w = double.tryParse(wStr.replaceAll('kg', '').trim()) ?? 0.0;
+        v += (w * reps).toInt();
+      }
+    }
+    return v;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -412,46 +428,79 @@ class _WorkoutTrackerScreenState extends ConsumerState<WorkoutTrackerScreen>
     );
   }
 
-  void _finishWorkout() {
+  void _finishWorkout() async {
+    // Show loading
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surfaceCard,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          '¡Workout Completo! 🎉',
-          style: TextStyle(
-              color: AppColors.textPrimary, fontWeight: FontWeight.w800),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              '+150 XP ganados',
-              style: TextStyle(
-                color: AppColors.neonGold,
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tiempo: $_timerString',
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'CERRAR',
-              style: TextStyle(color: AppColors.neonPink),
-            ),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.neonPink),
       ),
     );
+
+    try {
+      final xpEarned = await ref.read(workoutServiceProvider).saveWorkout(
+        durationSeconds: _elapsed.inSeconds,
+        volume: _totalVolume,
+        title: 'Push Day 💥',
+      );
+      
+      // Refresh user data
+      if (mounted) {
+        ref.invalidate(userProvider);
+        Navigator.pop(context); // close loading
+
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: AppColors.surfaceCard,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20)),
+            title: const Text(
+              '¡Workout Completo! 🎉',
+              style: TextStyle(
+                  color: AppColors.textPrimary, fontWeight: FontWeight.w800),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '+$xpEarned XP ganados',
+                  style: const TextStyle(
+                    color: AppColors.neonGold,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tiempo: $_timerString',
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // close dialog
+                  context.go('/home'); // return to dashboard
+                },
+                child: const Text(
+                  'CERRAR',
+                  style: TextStyle(color: AppColors.neonPink),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
   }
 }
