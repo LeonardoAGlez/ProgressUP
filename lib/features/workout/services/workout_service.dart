@@ -24,38 +24,45 @@ class WorkoutService {
     return 'Leyenda';
   }
 
+  /// Guarda el entrenamiento con el detalle de ejercicios completados.
+  /// [ejerciciosCompletados] es una lista de mapas con:
+  ///   - 'name': nombre del ejercicio
+  ///   - 'seriesCompletadas': int
+  ///   - 'seriesTarget': int
+  ///   - 'weight': String
+  ///   - 'reps': int
   Future<int> saveWorkout({
     required int durationSeconds,
     required int volume,
     required String title,
+    required List<Map<String, dynamic>> ejerciciosCompletados,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return 0;
 
-    // Calculate XP
+    // Calcular XP
     int xpEarned = 50; // Base XP
-    
-    // Duration XP
+
     if (durationSeconds > 75 * 60) {
       xpEarned += 30;
     } else if (durationSeconds > 45 * 60) {
       xpEarned += 20;
     }
 
-    // Volume XP
     int volumeXp = (volume ~/ 1000) * 10;
-    if (volumeXp > 200) volumeXp = 200; // Cap
+    if (volumeXp > 200) volumeXp = 200;
     xpEarned += volumeXp;
 
-    // 1. Insert workout
+    // 1. Insertar workout con ejercicios completados
     await _client.from('workouts').insert({
       'user_id': userId,
       'duracion': durationSeconds,
       'puntos_generados': xpEarned,
       'title': title,
+      'ejercicios_completados': ejerciciosCompletados,
     });
 
-    // 2. Fetch current points and streak
+    // 2. Actualizar puntos y streak del usuario
     final userRes = await _client
         .from('users')
         .select('puntos_semana, xp_total, streak, nivel')
@@ -72,7 +79,6 @@ class WorkoutService {
       final newLevel = _calculateLevel(newTotalXP);
       final newRank = _calculateRank(newLevel);
 
-      // 3. Update User
       await _client.from('users').update({
         'xp_total': newTotalXP,
         'puntos_semana': currentPuntos + xpEarned,
@@ -81,7 +87,6 @@ class WorkoutService {
         'rango': newRank,
       }).eq('id', userId);
 
-      // 4. Insert XP Log
       await _client.from('xp_logs').insert({
         'user_id': userId,
         'tipo': 'workout_base',
@@ -93,4 +98,3 @@ class WorkoutService {
     return xpEarned;
   }
 }
-

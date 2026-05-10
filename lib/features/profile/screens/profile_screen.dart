@@ -56,7 +56,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   SliverToBoxAdapter(child: _buildXPSection(user)),
                   SliverToBoxAdapter(child: _buildStatsSection(user)),
                   SliverToBoxAdapter(child: _buildAchievements()),
-                  SliverToBoxAdapter(child: _buildWorkoutHistory(workouts)),
+                  SliverToBoxAdapter(child: _buildWorkoutHistory(context, workouts)),
                   SliverToBoxAdapter(child: _buildActions(context)),
                   const SliverToBoxAdapter(child: SizedBox(height: 100)),
                 ],
@@ -325,7 +325,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildWorkoutHistory(List<WorkoutModel> workouts) {
+  Widget _buildWorkoutHistory(BuildContext context, List<WorkoutModel> workouts) {
     if (workouts.isEmpty) {
       return const Padding(
         padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -338,13 +338,41 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Historial Reciente',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Historial Reciente',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => context.go('/history'),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.neonPink.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: AppColors.neonPink.withValues(alpha: 0.3),
+                        width: 1),
+                  ),
+                  child: const Text(
+                    'VER TODO',
+                    style: TextStyle(
+                      color: AppColors.neonPink,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           ...workouts.asMap().entries.map((e) {

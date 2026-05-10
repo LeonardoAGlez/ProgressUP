@@ -141,6 +141,8 @@ class WorkoutModel {
   final int puntosGenerados;
   final String? title;
   final bool isTemplate;
+  /// Lista de ejercicios completados con sus series
+  final List<Map<String, dynamic>> ejerciciosCompletados;
 
   const WorkoutModel({
     required this.id,
@@ -150,9 +152,14 @@ class WorkoutModel {
     this.puntosGenerados = 0,
     this.title,
     this.isTemplate = false,
+    this.ejerciciosCompletados = const [],
   });
 
   factory WorkoutModel.fromJson(Map<String, dynamic> json) {
+    final raw = json['ejercicios_completados'];
+    final ejercicios = raw is List
+        ? raw.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+        : <Map<String, dynamic>>[];
     return WorkoutModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
@@ -161,6 +168,7 @@ class WorkoutModel {
       puntosGenerados: json['puntos_generados'] as int? ?? 0,
       title: json['title'] as String?,
       isTemplate: json['is_template'] as bool? ?? false,
+      ejerciciosCompletados: ejercicios,
     );
   }
 }

@@ -9,6 +9,7 @@ import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/shell/screens/main_shell.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/workout/screens/workout_tracker_screen.dart';
+import '../../features/workout/screens/workout_history_screen.dart';
 import '../../features/social/screens/social_feed_screen.dart';
 import '../../features/leaderboard/screens/leaderboard_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
@@ -66,6 +67,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/workout',
             name: 'workout',
             builder: (context, state) => const WorkoutTrackerScreen(),
+          ),
+          GoRoute(
+            path: '/history',
+            name: 'history',
+            builder: (context, state) => const WorkoutHistoryScreen(),
           ),
           GoRoute(
             path: '/social',
