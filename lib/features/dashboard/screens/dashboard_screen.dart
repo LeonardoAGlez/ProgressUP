@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,18 +7,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/neon_card.dart';
 import '../../../shared/widgets/xp_progress_bar.dart';
 
-// ── Mock Data (replaced by Supabase later) ──────────────────────────
-const _mockUser = {
-  'name': 'León',
-  'level': 'Neon Striker',
-  'nextLevel': 'Cyber Warrior',
-  'currentXP': 2450,
-  'maxXP': 3000,
-  'workoutsPerWeek': 4,
-  'calories': 2340,
-  'totalTime': '5h 20m',
-};
+import '../../../shared/providers/user_provider.dart';
+import '../../../shared/models/models.dart';
 
+// ── Mock Data (replaced by Supabase later) ──────────────────────────
 const _mockWorkout = {
   'title': 'Push Day 💥',
   'date': 'Hoy • 22 Oct',
@@ -30,11 +23,18 @@ const _mockWorkout = {
 
 // ─────────────────────────────────────────────────────────────────────
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final userAsync = ref.watch(userProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Container(
@@ -42,27 +42,41 @@ class DashboardScreen extends ConsumerWidget {
           gradient: AppColors.backgroundGradient,
         ),
         child: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              // Header
-              SliverToBoxAdapter(child: _buildHeader(context)),
-              // XP Card
-              SliverToBoxAdapter(child: _buildXPCard()),
-              // Stats Row
-              SliverToBoxAdapter(child: _buildStatsRow()),
-              // Today's Workout
-              SliverToBoxAdapter(child: _buildTodayWorkout(context)),
-              // Quick Actions
-              SliverToBoxAdapter(child: _buildQuickActions(context)),
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
+          child: userAsync.when(
+            data: (user) {
+              if (user == null || user.pesoKg == null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) context.go('/onboarding');
+                });
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.neonPink),
+                );
+              }
+              return CustomScrollView(
+                slivers: [
+                  // Header
+                  SliverToBoxAdapter(child: _buildHeader(context, user)),
+                  // XP Card
+                  SliverToBoxAdapter(child: _buildXPCard(user)),
+                  // Stats Row
+                  SliverToBoxAdapter(child: _buildStatsRow(user)),
+                  // Today's Workout
+                  SliverToBoxAdapter(child: _buildTodayWorkout(context)),
+                  // Quick Actions
+                  SliverToBoxAdapter(child: _buildQuickActions(context)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator(color: AppColors.neonPink)),
+            error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, user) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       child: Row(
@@ -94,7 +108,7 @@ class DashboardScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Hola, ${_mockUser['name']} 💪',
+                  'Hola, ${user.fullName?.split(' ')[0] ?? 'Atleta'} 💪',
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 20,
@@ -102,7 +116,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1),
                 Text(
-                  _mockUser['level'] as String,
+                  'Nivel ${user.nivel} • ${user.rango}',
                   style: const TextStyle(
                     color: AppColors.neonPink,
                     fontSize: 13,
@@ -146,7 +160,10 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildXPCard() {
+  Widget _buildXPCard(UserModel user) {
+    // Calculate next level required XP
+    final maxXP = (100 * math.pow(user.nivel + 1, 1.5)).toInt();
+    
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       child: NeonPrimaryCard(
@@ -164,7 +181,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${_mockUser['currentXP']} XP',
+              '${user.xpTotal} XP',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 36,
@@ -184,13 +201,12 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 LayoutBuilder(builder: (ctx, c) {
-                  final p = (_mockUser['currentXP'] as int) /
-                      (_mockUser['maxXP'] as int);
+                  final p = user.xpTotal / maxXP;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 1400),
                     curve: Curves.easeOutCubic,
                     height: 8,
-                    width: c.maxWidth * p,
+                    width: c.maxWidth * p.clamp(0.0, 1.0),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(4),
@@ -207,7 +223,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Siguiente nivel: ${_mockUser['nextLevel']}',
+              'Siguiente nivel: $maxXP XP',
               style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 12,
@@ -219,24 +235,24 @@ class DashboardScreen extends ConsumerWidget {
     ).animate().fadeIn(delay: 200.ms, duration: 500.ms).slideY(begin: 0.1);
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(UserModel user) {
     final stats = [
       {
         'icon': Icons.fitness_center_rounded,
-        'value': '${_mockUser['workoutsPerWeek']} / sem',
+        'value': '${user.diasSemana?.split(' ')[0] ?? '3'} / sem',
         'label': 'Entrenamientos',
         'color': AppColors.neonCyan,
       },
       {
         'icon': Icons.local_fire_department_rounded,
-        'value': '${_mockUser['calories']} kcal',
-        'label': 'Calorías',
+        'value': '${user.streak} d',
+        'label': 'Racha Actual',
         'color': AppColors.neonPink,
       },
       {
-        'icon': Icons.timer_outlined,
-        'value': _mockUser['totalTime'],
-        'label': 'Tiempo',
+        'icon': Icons.workspace_premium_rounded,
+        'value': user.subscriptionTier,
+        'label': 'Plan',
         'color': AppColors.neonGold,
       },
     ];

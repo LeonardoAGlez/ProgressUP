@@ -39,7 +39,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         data: {'full_name': _nameCtrl.text.trim()},
       );
       if (res.user != null && mounted) {
-        context.go('/home');
+        context.go('/onboarding');
       }
     } on AuthException catch (e) {
       if (mounted) {

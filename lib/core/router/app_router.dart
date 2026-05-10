@@ -5,9 +5,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
+import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/shell/screens/main_shell.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/workout/screens/workout_tracker_screen.dart';
+import '../../features/workout/screens/workout_history_screen.dart';
 import '../../features/social/screens/social_feed_screen.dart';
 import '../../features/leaderboard/screens/leaderboard_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
@@ -42,6 +44,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'register',
         builder: (context, state) => const RegisterScreen(),
       ),
+      GoRoute(
+        path: '/onboarding',
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
 
       // Main shell with bottom nav
       ShellRoute(
@@ -60,6 +67,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/workout',
             name: 'workout',
             builder: (context, state) => const WorkoutTrackerScreen(),
+          ),
+          GoRoute(
+            path: '/history',
+            name: 'history',
+            builder: (context, state) => const WorkoutHistoryScreen(),
           ),
           GoRoute(
             path: '/social',

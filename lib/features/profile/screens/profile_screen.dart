@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/neon_card.dart';
 import '../../../shared/widgets/xp_progress_bar.dart';
+
+import '../../../shared/providers/user_provider.dart';
+import '../../workout/providers/workout_provider.dart';
+import '../../../shared/models/models.dart';
+import 'package:intl/intl.dart';
 
 const _achievements = [
   {'icon': '🔥', 'name': 'Semana Perfecta', 'desc': '7 días seguidos', 'unlocked': true},
@@ -16,52 +22,64 @@ const _achievements = [
   {'icon': '🌟', 'name': 'Legendary', 'desc': '365 días streak', 'unlocked': false},
 ];
 
-const _workoutHistory = [
-  {'title': 'Push Day', 'date': '22 Oct', 'xp': 150, 'duration': '52 min'},
-  {'title': 'Pull Day', 'date': '20 Oct', 'xp': 120, 'duration': '45 min'},
-  {'title': 'Leg Day', 'date': '18 Oct', 'xp': 200, 'duration': '65 min'},
-  {'title': 'Full Body', 'date': '16 Oct', 'xp': 180, 'duration': '60 min'},
-];
-
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = Supabase.instance.client.auth.currentUser;
-    final name = user?.userMetadata?['full_name'] as String? ?? 'León';
-    final email = user?.email ?? 'user@neonpulse.app';
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final userAsync = ref.watch(userProvider);
+    final workoutsAsync = ref.watch(recentWorkoutsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
         child: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _buildProfileHeader(context, name, email)),
-              SliverToBoxAdapter(child: _buildXPSection()),
-              SliverToBoxAdapter(child: _buildStatsSection()),
-              SliverToBoxAdapter(child: _buildAchievements()),
-              SliverToBoxAdapter(child: _buildWorkoutHistory()),
-              SliverToBoxAdapter(child: _buildActions(context)),
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
+          child: userAsync.when(
+            data: (user) {
+              if (user == null || user.pesoKg == null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) context.go('/onboarding');
+                });
+                return const Center(child: CircularProgressIndicator(color: AppColors.neonPink));
+              }
+              final workouts = workoutsAsync.asData?.value ?? [];
+
+              return CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(child: _buildProfileHeader(context, user)),
+                  SliverToBoxAdapter(child: _buildXPSection(user)),
+                  SliverToBoxAdapter(child: _buildStatsSection(user)),
+                  SliverToBoxAdapter(child: _buildAchievements()),
+                  SliverToBoxAdapter(child: _buildWorkoutHistory(context, workouts)),
+                  SliverToBoxAdapter(child: _buildActions(context)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator(color: AppColors.neonPink)),
+            error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildProfileHeader(BuildContext ctx, String name, String email) {
+  Widget _buildProfileHeader(BuildContext ctx, UserModel user) {
+    final maxXP = ((user.puntosSemana ~/ 1000) + 1) * 1000;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
       child: Column(
         children: [
           // Avatar with neon ring
           XPProgressRing(
-            currentXP: 2450,
-            maxXP: 3000,
+            currentXP: user.puntosSemana,
+            maxXP: maxXP,
             size: 100,
             strokeWidth: 4,
             child: Container(
@@ -80,7 +98,7 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 14),
 
           Text(
-            name,
+            user.fullName ?? 'Atleta',
             style: const TextStyle(
               color: AppColors.textPrimary,
               fontSize: 24,
@@ -89,7 +107,7 @@ class ProfileScreen extends ConsumerWidget {
           ).animate().fadeIn(delay: 100.ms),
 
           Text(
-            email,
+            Supabase.instance.client.auth.currentUser?.email ?? '',
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 13,
@@ -113,9 +131,9 @@ class ProfileScreen extends ConsumerWidget {
                 color: AppColors.neonPink.withOpacity(0.3),
               ),
             ),
-            child: const Text(
-              '⚡ Neon Striker',
-              style: TextStyle(
+            child: Text(
+              'Nivel ${user.nivel} • ${user.rango}',
+              style: const TextStyle(
                 color: AppColors.neonPink,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -126,62 +144,64 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // PRO upgrade button
-          GestureDetector(
-            onTap: () => ctx.go('/subscription'),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.neonGold, AppColors.neonPink],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.neonGold.withOpacity(0.3),
-                    blurRadius: 12,
+          if (!user.isPro)
+            GestureDetector(
+              onTap: () => ctx.go('/subscription'),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.neonGold, AppColors.neonPink],
                   ),
-                ],
-              ),
-              child: const Center(
-                child: Text(
-                  '⭐ Obtener NEON PULSE PRO',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    letterSpacing: 0.5,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.neonGold.withOpacity(0.3),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Text(
+                    '⭐ Obtener NEON PULSE PRO',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
+            ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
         ],
       ),
     );
   }
 
-  Widget _buildXPSection() {
+  Widget _buildXPSection(UserModel user) {
+    final maxXP = (100 * math.pow(user.nivel + 1, 1.5)).toInt();
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
       child: NeonCard(
         padding: const EdgeInsets.all(18),
         child: XPProgressBar(
-          currentXP: 2450,
-          maxXP: 3000,
-          level: 'Neon Striker',
-          nextLevel: 'Cyber Warrior',
+          currentXP: user.xpTotal,
+          maxXP: maxXP,
+          level: 'Nivel ${user.nivel}',
+          nextLevel: 'Nivel ${user.nivel + 1}',
         ),
       ),
     ).animate().fadeIn(delay: 350.ms, duration: 500.ms);
   }
 
-  Widget _buildStatsSection() {
+  Widget _buildStatsSection(UserModel user) {
     final stats = [
-      {'label': 'Workouts', 'value': '48', 'icon': Icons.fitness_center_rounded},
-      {'label': 'Racha', 'value': '12d', 'icon': Icons.local_fire_department_rounded},
-      {'label': 'Posición', 'value': '#5', 'icon': Icons.leaderboard_rounded},
-      {'label': 'Logros', 'value': '3/6', 'icon': Icons.emoji_events_rounded},
+      {'label': 'Días/Semana', 'value': user.diasSemana?.split(' ')[0] ?? '-', 'icon': Icons.fitness_center_rounded},
+      {'label': 'Racha', 'value': '${user.streak}d', 'icon': Icons.local_fire_department_rounded},
+      {'label': 'Plan', 'value': user.subscriptionTier, 'icon': Icons.star_rounded},
+      {'label': 'XP Total', 'value': '${user.xpTotal}', 'icon': Icons.bolt_rounded},
     ];
 
     return Padding(
@@ -209,6 +229,8 @@ class ProfileScreen extends ConsumerWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       s['label'] as String,
@@ -216,6 +238,7 @@ class ProfileScreen extends ConsumerWidget {
                         color: AppColors.textSecondary,
                         fontSize: 9,
                       ),
+                      maxLines: 1,
                     ),
                   ],
                 ),
@@ -302,23 +325,61 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWorkoutHistory() {
+  Widget _buildWorkoutHistory(BuildContext context, List<WorkoutModel> workouts) {
+    if (workouts.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+        child: Text('No hay historial todavía.', style: TextStyle(color: AppColors.textSecondary)),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Historial Reciente',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Historial Reciente',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => context.go('/history'),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.neonPink.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: AppColors.neonPink.withValues(alpha: 0.3),
+                        width: 1),
+                  ),
+                  child: const Text(
+                    'VER TODO',
+                    style: TextStyle(
+                      color: AppColors.neonPink,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          ..._workoutHistory.asMap().entries.map((e) {
+          ...workouts.asMap().entries.map((e) {
             final w = e.value;
+            final dateStr = DateFormat('dd MMM').format(w.fecha);
+            final durationStr = w.duracion != null ? '${w.duracion! ~/ 60} min' : '- min';
+
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: NeonCard(
@@ -341,7 +402,7 @@ class ProfileScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            w['title'] as String,
+                            w.title ?? 'Workout',
                             style: const TextStyle(
                               color: AppColors.textPrimary,
                               fontWeight: FontWeight.w700,
@@ -349,7 +410,7 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                           ),
                           Text(
-                            '${w['date']} • ${w['duration']}',
+                            '$dateStr • $durationStr',
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,
@@ -359,7 +420,7 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      '+${w['xp']} XP',
+                      '+${w.puntosGenerados} XP',
                       style: const TextStyle(
                         color: AppColors.neonGold,
                         fontWeight: FontWeight.w800,
