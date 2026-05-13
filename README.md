@@ -1,4 +1,4 @@
-# EQUIOPO SOBRE-PESO
+# EQUIPO SOBRE-PESO
 Leonardo Alvarez González                202258726
 Osiris Silva García                      202254106
 Paul Sebastian Rosales Lamarque          202251882
