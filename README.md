@@ -1,3 +1,12 @@
+# EQUIOPO SOBRE-PESO
+Leonardo Alvarez González                202258726
+Osiris Silva García                      202254106
+Paul Sebastian Rosales Lamarque          202251882
+Luis Albeto González Muños               202261451
+Mayra Celeste Pérez Hernández            202247570
+Aejandro Juárez Rojas                    202227957
+
+
 # NEON PULSE 3D - Progress Up
 
 > Una app fitness gamificada con estética neon dark | Flutter + Supabase + RevenueCat
@@ -60,3 +69,4 @@ flutter run
 - `neonpulse_pro_monthly` → $9.99/mes
 - `neonpulse_pro_annual` → $59.99/año (50% ahorro)
 - Trial: 7 días gratis
+
