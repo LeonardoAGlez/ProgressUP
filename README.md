@@ -1,10 +1,10 @@
 # EQUIPO SOBRE-PESO
-Leonardo Alvarez González                202258726
-Osiris Silva García                      202254106
-Paul Sebastian Rosales Lamarque          202251882
-Luis Albeto González Muños               202261451
-Mayra Celeste Pérez Hernández            202247570
-Aejandro Juárez Rojas                    202227957
+- Leonardo Alvarez González                202258726
+- Osiris Silva García                      202254106
+- Paul Sebastian Rosales Lamarque          202251882
+- Luis Albeto González Muños               202261451
+- Mayra Celeste Pérez Hernández            202247570
+- Alejandro Juárez Rojas                    202227957
 
 
 # NEON PULSE 3D - Progress Up
