@@ -6,6 +6,8 @@
 - Mayra Celeste Pérez Hernández            202247570
 - Alejandro Juárez Rojas                    202227957
 
+Link del video: https://drive.google.com/file/d/1qO_1T0dEqMCG17R_Kqgduxv3QLt_Ljjr/view?usp=drivesdk
+
 
 # NEON PULSE 3D - Progress Up
 
